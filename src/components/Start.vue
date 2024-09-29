@@ -1,4 +1,5 @@
 <template>
+
   <div class="app-container">
     <!-- Progress Bar -->
     <div v-if="currentStep === 'survey'" class="progress-bar">
@@ -26,7 +27,8 @@
           nous menons des enquêtes pour mieux connaitre les flux de mobilité
           routière et ce pour le compte du Ministère de la Transition
           Écologique.<br />
-          Accepteriez-vous de répondre <br /> à quelques questions ?
+          Accepteriez-vous de répondre <br />
+          à quelques questions ?
         </h2>
         <button @click="startSurvey" class="btn-next">
           COMMENCER QUESTIONNAIRE
@@ -35,65 +37,46 @@
 
       <!-- Survey Questions Step -->
       <div v-else-if="currentStep === 'survey' && !isSurveyComplete">
-        <div class="question-container">
+        <div class="question-container" v-if="currentQuestion">
           <h2>{{ currentQuestion.text }}</h2>
 
-          <!-- Commune Selector for Q9 -->
-          <div v-if="currentQuestion.usesCommuneSelector">
-            <CommuneSelector
-              v-model="selectedCommune"
-              v-model:postalCodePrefix="postalCodePrefix"
-            />
-            <p>Commune sélectionnée ou saisie: {{ selectedCommune }}</p>
-            <button
-              @click="handleCommuneSelection"
-              class="btn-next"
-              :disabled="!selectedCommune.trim()"
-            >
-              {{ isLastQuestion ? "Terminer" : "Suivant" }}
-            </button>
-          </div>
-          <!-- Dropdown for Q5 -->
-          <!-- <div v-else-if="currentQuestion.id === 'Q5'">
-            <div class="station-input-container">
-              <input
-                v-model="stationInput"
-                class="form-control"
-                type="text"
-                placeholder="Saisissez une gare"
-              />
-              <ul v-if="showFilteredStations" class="commune-dropdown">
-                <li
-                  v-for="station in filteredStations"
-                  :key="station"
-                  @click="selectStation(station)"
-                  class="commune-option"
-                >
-                  {{ station }}
-                </li>
-              </ul>
-            </div>
-            <button
-              @click="handleStationSelection"
-              class="btn-next"
-              :disabled="!stationInput.trim()"
-            >
-              {{ isLastQuestion ? "Terminer" : "Suivant" }}
-            </button>
-          </div> -->
-          <!-- Multiple Choice Questions -->
-          <div v-else-if="!currentQuestion.freeText">
+          <!-- Standard options -->
+          <div
+            v-if="
+              !currentQuestion.freeText && !currentQuestion.usesCommuneSelector
+            "
+          >
             <div
               v-for="(option, index) in currentQuestion.options"
               :key="index"
             >
-              <button @click="selectAnswer(option, index)" class="btn-option">
+              <button @click="selectAnswer(option)" class="btn-option">
                 {{ option.text }}
               </button>
             </div>
           </div>
-          <!-- Free Text Questions (including Q10) -->
-          <div v-else>
+
+          <!-- Commune Selector -->
+          <div v-if="currentQuestion.usesCommuneSelector">
+            <CommuneSelector
+              v-model="communeSelections[currentQuestion.id]"
+              v-model:postalCodePrefix="postalCodePrefixes[currentQuestion.id]"
+            />
+            <p>
+              Commune sélectionnée ou saisie:
+              {{ communeSelections[currentQuestion.id] }}
+            </p>
+            <button
+              @click="handleCommuneSelection"
+              class="btn-next"
+              :disabled="!communeSelections[currentQuestion.id]?.trim()"
+            >
+              {{ isLastQuestion ? "Terminer" : "Suivant" }}
+            </button>
+          </div>
+
+          <!-- Free Text Questions -->
+          <div v-if="currentQuestion.freeText">
             <div class="input-container">
               <input
                 v-model="freeTextAnswer"
@@ -112,6 +95,7 @@
               {{ isLastQuestion ? "Terminer" : "Suivant" }}
             </button>
           </div>
+
           <!-- Back Button -->
           <button @click="previousQuestion" class="btn-return" v-if="canGoBack">
             Retour
@@ -133,7 +117,7 @@
 
     <!-- Footer -->
     <div class="footer">
-      <AdminDashboard />
+      <AdminDashboard :questions="questions" />
       <div class="doc-count">Nombre de questionnaires : {{ docCount }}</div>
     </div>
 
@@ -154,6 +138,7 @@
     </div>
   </div>
 </template>
+
 
 <script setup>
 import { ref, computed, onMounted, watch } from "vue";
@@ -182,6 +167,12 @@ const showPdf = ref(false);
 const pdfUrl = ref("/Plan.pdf");
 const stationInput = ref("");
 const filteredStations = ref([]);
+const isPrecisionRequired = ref(false);
+const precisionAnswer = ref("");
+const currentOptionRequiringPrecision = ref(null);
+
+const communeSelections = ref({});
+const postalCodePrefixes = ref({});
 
 // Firestore refs
 const surveyCollectionRef = collection(db, "HDF");
@@ -226,12 +217,40 @@ const stationsList = [
   "Paris Montparnasse",
 ];
 
-// Computed properties
 const currentQuestion = computed(() => {
-  return currentQuestionIndex.value >= 0 &&
+  if (
+    currentQuestionIndex.value >= 0 &&
     currentQuestionIndex.value < questions.length
-    ? questions[currentQuestionIndex.value]
-    : null;
+  ) {
+    const question = questions[currentQuestionIndex.value];
+
+    // Handle dynamic text
+    const text =
+      typeof question.text === "function"
+        ? question.text(answers.value)
+        : question.text;
+
+    // Handle dynamic options
+    const options =
+      typeof question.options === "function"
+        ? question.options(answers.value)
+        : question.options;
+
+    // Debug logging for all questions
+    console.log(
+      `Question ${question.id} detected. Current answers:`,
+      answers.value
+    );
+    console.log(`${question.id} text after evaluation:`, text);
+    console.log(`${question.id} options after evaluation:`, options);
+
+    return {
+      ...question,
+      text,
+      options,
+    };
+  }
+  return null;
 });
 
 const showFilteredStations = computed(
@@ -296,17 +315,38 @@ const startSurvey = () => {
   isSurveyComplete.value = false;
 };
 
-const selectAnswer = (option, index) => {
+const selectAnswer = (option) => {
   if (currentQuestion.value) {
-    answers.value[currentQuestion.value.id] = index + 1;
-
-    if (option.next === "end") {
-      finishSurvey();
-    } else if (option.requiresPrecision) {
-      nextQuestion(option.next);
+    if (option.requiresPrecision) {
+      isPrecisionRequired.value = true;
+      currentOptionRequiringPrecision.value = option;
     } else {
-      nextQuestion();
+      answers.value[currentQuestion.value.id] = option.id;
+      if (option.next === "end") {
+        finishSurvey();
+      } else {
+        nextQuestion(option.next);
+      }
     }
+  }
+};
+
+const submitPrecisionAnswer = () => {
+  if (currentQuestion.value && currentOptionRequiringPrecision.value) {
+    answers.value[currentQuestion.value.id] =
+      currentOptionRequiringPrecision.value.id;
+    answers.value[`${currentQuestion.value.id}_precision`] =
+      precisionAnswer.value;
+
+    isPrecisionRequired.value = false;
+    precisionAnswer.value = "";
+
+    if (currentOptionRequiringPrecision.value.next === "end") {
+      finishSurvey();
+    } else {
+      nextQuestion(currentOptionRequiringPrecision.value.next);
+    }
+    currentOptionRequiringPrecision.value = null;
   }
 };
 
@@ -345,68 +385,60 @@ const updateSelectedCommune = (value) => {
 };
 
 const handleCommuneSelection = () => {
-  console.log("handleCommuneSelection called");
-  if (currentQuestion.value.usesCommuneSelector && selectedCommune.value.trim() !== "") {
-    console.log("Condition met, processing commune selection");
-    const parts = selectedCommune.value.split(" - ");
+  if (currentQuestion.value.usesCommuneSelector) {
+    const questionId = currentQuestion.value.id;
+    const selectedValue = communeSelections.value[questionId];
 
-    if (parts.length === 2) {
-      // Dropdown selection
-      const [commune, codeInsee] = parts;
-      answers.value['Q9_COMMUNE'] = commune;
-      answers.value['Q9_CODE_INSEE'] = codeInsee;
-      answers.value['Q9_COMMUNE_LIBRE'] = ""; // Clear COMMUNE_LIBRE
-    } else {
-      // Manual entry or free text
-      answers.value['Q9_COMMUNE'] = ""; // Clear the dropdown commune
-      answers.value['Q9_CODE_INSEE'] = ""; // Clear INSEE code
-      answers.value['Q9_COMMUNE_LIBRE'] = selectedCommune.value.trim(); // Set COMMUNE_LIBRE
+    if (selectedValue && selectedValue.trim() !== "") {
+      const parts = selectedValue.split(" - ");
+
+      if (parts.length === 2) {
+        // A commune was selected from the list
+        const [commune, codeInsee] = parts;
+        answers.value[`${questionId}_COMMUNE`] = commune;
+        answers.value[`${questionId}_CODE_INSEE`] = codeInsee;
+        answers.value[`${questionId}_COMMUNE_LIBRE`] = "";
+      } else {
+        // Free input was used
+        answers.value[`${questionId}_COMMUNE`] = "";
+        answers.value[`${questionId}_CODE_INSEE`] = "";
+        answers.value[`${questionId}_COMMUNE_LIBRE`] = selectedValue.trim();
+      }
+
+      nextQuestion();
+      communeSelections.value[questionId] = "";
     }
-    console.log("Calling nextQuestion");
-    nextQuestion('Q10'); // Explicitly move to Q10
-    console.log("After nextQuestion call");
-    selectedCommune.value = ""; // Reset the selected commune
-    postalCodePrefix.value = ""; // Reset the postal code prefix
-  } else {
-    console.log("Condition not met", currentQuestion.value, selectedCommune.value);
   }
 };
 
-// Modify the nextQuestion function to include logging
 const nextQuestion = (forcedNextId = null) => {
-  console.log("nextQuestion called with forcedNextId:", forcedNextId);
-  let nextQuestionId = forcedNextId;
-  if (!nextQuestionId && currentQuestion.value) {
-    nextQuestionId = currentQuestion.value.next;
-    if (!currentQuestion.value.freeText) {
-      const selectedAnswer = answers.value[currentQuestion.value.id];
-      const selectedOption = currentQuestion.value.options[selectedAnswer - 1];
-      nextQuestionId = selectedOption?.next || null;
+    let nextQuestionId = forcedNextId;
+    if (!nextQuestionId && currentQuestion.value) {
+        if (typeof currentQuestion.value.next === 'function') {
+            nextQuestionId = currentQuestion.value.next(answers.value);
+        } else {
+            nextQuestionId = currentQuestion.value.next;
+        }
     }
-  }
 
-  console.log("Next question ID:", nextQuestionId);
+    if (nextQuestionId === "end") {
+        finishSurvey();
+    } else if (nextQuestionId) {
+        const nextIndex = questions.findIndex((q) => q.id === nextQuestionId);
+        if (nextIndex !== -1) {
+            currentQuestionIndex.value = nextIndex;
+            questionPath.value.push(nextQuestionId);
+            freeTextAnswer.value = "";
 
-  if (nextQuestionId === "end") {
-    console.log("Finishing survey");
-    finishSurvey();
-  } else if (nextQuestionId) {
-    const nextIndex = questions.findIndex((q) => q.id === nextQuestionId);
-    console.log("Next question index:", nextIndex);
-    if (nextIndex !== -1) {
-      currentQuestionIndex.value = nextIndex;
-      questionPath.value.push(nextQuestionId);
-      freeTextAnswer.value = "";
-      selectedCommune.value = "";
-      postalCodePrefix.value = "";
-      console.log("Moved to next question:", questions[nextIndex]);
-    } else {
-      console.log("Next question not found");
+            // Execute onEnter function if it exists
+            const nextQuestion = questions[nextIndex];
+            if (typeof nextQuestion.onEnter === 'function') {
+                nextQuestion.onEnter(answers.value);
+            }
+        }
     }
-  } else {
-    console.log("No next question found");
-  }
 };
+
 
 const previousQuestion = () => {
   if (canGoBack.value) {
@@ -423,17 +455,12 @@ const previousQuestion = () => {
     }
   }
 };
-
 const finishSurvey = async () => {
   isSurveyComplete.value = true;
   const now = new Date();
   const uniqueId = await getNextId();
 
-  // Determine if it's a passenger or non-passenger survey
-  const isPassenger = answers.value["Q1"] === 1;
-  const questionPrefix = isPassenger ? "Q2" : "Q2_nonvoyageur";
-
-  await addDoc(surveyCollectionRef, {
+  let surveyData = {
     ID_questionnaire: uniqueId,
     HEURE_DEBUT: startDate.value,
     DATE: now.toLocaleDateString("fr-FR").replace(/\//g, "-"),
@@ -444,16 +471,35 @@ const finishSurvey = async () => {
       minute: "2-digit",
       second: "2-digit",
     }),
-    TYPE_QUESTIONNAIRE: isPassenger ? "Passager" : "Non-passager",
-    [`${questionPrefix}_COMMUNE`]:
-      answers.value[`${questionPrefix}_COMMUNE`] || "",
-    CODE_INSEE: answers.value["CODE_INSEE"] || "",
-    ...answers.value,
+    PORT_ID_ORIGIN: answers.value.PORT_ID_ORIGIN || '',
+    PORT_ID_DESTINATION: answers.value.PORT_ID_DESTINATION || '',
+  };
+
+  // Process answers for all questions
+  questions.forEach((question) => {
+    const questionId = question.id;
+    if (question.usesCommuneSelector) {
+      surveyData[`${questionId}_COMMUNE`] =
+        answers.value[`${questionId}_COMMUNE`] || "";
+      surveyData[`${questionId}_CODE_INSEE`] =
+        answers.value[`${questionId}_CODE_INSEE`] || "";
+      surveyData[`${questionId}_COMMUNE_LIBRE`] =
+        answers.value[`${questionId}_COMMUNE_LIBRE`] || "";
+    } else {
+      surveyData[questionId] = answers.value[questionId] || "";
+    }
   });
+
+  try {
+    await addDoc(surveyCollectionRef, surveyData);
+    console.log("Survey data saved successfully");
+  } catch (error) {
+    console.error("Error saving survey data:", error);
+  }
 
   await getDocCount();
 };
-
+// Update resetSurvey function
 const resetSurvey = () => {
   currentStep.value = "start";
   startDate.value = "";
@@ -461,6 +507,8 @@ const resetSurvey = () => {
   currentQuestionIndex.value = 0;
   questionPath.value = ["Q1"];
   freeTextAnswer.value = "";
+  communeSelections.value = {};
+  postalCodePrefixes.value = {};
   isSurveyComplete.value = false;
 };
 
@@ -760,5 +808,15 @@ h2 {
   flex-grow: 1;
   border: none;
   margin-top: 20px;
+}
+
+/* Add these new styles */
+.precision-input {
+  margin-top: 15px;
+}
+
+.precision-input h3 {
+  font-size: 1.1em;
+  margin-bottom: 10px;
 }
 </style>

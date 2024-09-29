@@ -1,6 +1,6 @@
 <template>
 
-	<div id="" v-if="level === ">
+	<div id="" v-if="level === ''">
 		<h1> TEXT </h1>
 		<select v-model="VAR" class="form-control">
 			<option v-for="option in IMPORT" :key="option.id" :value="option.output">

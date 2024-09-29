@@ -1,320 +1,332 @@
 <template>
 	<div>
-		<button class="btn-signin" @click="showSignInModal = true">Connexion Admin</button>
-
-		<!-- Sign In Modal -->
-		<div v-if="showSignInModal" class="modal">
-			<div class="modal-content signin-modal">
-				<button class="close" @click="showSignInModal = false">&times;</button>
-				<h2>Connexion Admin</h2>
-				<input v-model="password" type="password" placeholder="Entrez le mot de passe" class="form-control">
-				<button @click="signIn" class="btn-signin">Se connecter</button>
-			</div>
+	  <button class="btn-signin" @click="showSignInModal = true">
+		Connexion Admin
+	  </button>
+  
+	  <!-- Sign In Modal -->
+	  <div v-if="showSignInModal" class="modal">
+		<div class="modal-content signin-modal">
+		  <button class="close" @click="showSignInModal = false">&times;</button>
+		  <h2>Connexion Admin</h2>
+		  <input
+			v-model="password"
+			type="password"
+			placeholder="Entrez le mot de passe"
+			class="form-control"
+		  />
+		  <button @click="signIn" class="btn-signin">Se connecter</button>
 		</div>
-
-		<!-- Admin Dashboard Modal -->
-		<div v-if="showAdminDashboard" class="modal">
-			<div class="modal-content admin-dashboard">
-				<button class="close" @click="showAdminDashboard = false">&times;</button>
-				<h2>Tableau de Bord Admin</h2>
-				<div class="dashboard-content">
-					<div class="dashboard-card total">
-						<h3>Total des Enquêtes</h3>
-						<p class="big-number">{{ totalSurveys }}</p>
-					</div>
-					<div class="dashboard-card">
-						<h3>Enquêtes par Enquêteur</h3>
-						<ul>
-							<li v-for="(count, name) in surveysByEnqueteur" :key="name">
-								<span>{{ name }}</span>
-								<span class="count">{{ count }}</span>
-							</li>
-						</ul>
-					</div>
-					<div class="dashboard-card">
-						<h3>Enquêtes par Type</h3>
-						<ul>
-							<li v-for="(count, type) in surveysByType" :key="type">
-								<span>{{ type }}</span>
-								<span class="count">{{ count }}</span>
-							</li>
-						</ul>
-					</div>
-				</div>
-				<button @click="downloadData" class="btn-download">Télécharger les Données</button>
+	  </div>
+  
+	  <!-- Admin Dashboard Modal -->
+	  <div v-if="showAdminDashboard" class="modal">
+		<div class="modal-content admin-dashboard">
+		  <button class="close" @click="showAdminDashboard = false">
+			&times;
+		  </button>
+		  <h2>Tableau de Bord Admin</h2>
+		  <div class="dashboard-content">
+			<div class="dashboard-card total">
+			  <h3>Total des Enquêtes</h3>
+			  <p class="big-number">{{ totalSurveys }}</p>
 			</div>
+			<div class="dashboard-card">
+			  <h3>Enquêtes par Enquêteur</h3>
+			  <ul>
+				<li v-for="(count, name) in surveysByEnqueteur" :key="name">
+				  <span>{{ name }}</span>
+				  <span class="count">{{ count }}</span>
+				</li>
+			  </ul>
+			</div>
+		  </div>
+		  <button @click="downloadData" class="btn-download">
+			Télécharger les Données
+		  </button>
 		</div>
+	  </div>
 	</div>
-</template>
-
-<script setup>
-import { ref, onMounted } from 'vue';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebaseConfig';
-import * as XLSX from 'xlsx';
-
-const showSignInModal = ref(false);
-const showAdminDashboard = ref(false);
-const password = ref('');
-const surveysByEnqueteur = ref({});
-const surveysByType = ref({});
-const totalSurveys = ref(0);
-
-const surveyCollectionRef = collection(db, "HDF");
-
-// Stations list
-const stationsList = [
-	'Brest', 'Kerhuon', 'La Forest-Landerneau', 'Landerneau', 'Dirinon',
-	'Pont-de-Buis', 'Châteaulin', 'Quimper', 'Rosporden', 'Bannalec',
-	'Quimperlé', 'Gestel', 'Lorient', 'Hennebont', 'Brandérion',
-	'Landévant', 'Landaul – Mendon', 'Auray', 'Sainte-Anne',
-	'Questembert', 'Malansac', 'Redon', 'Séverac', 'Saint-Gildas-des-Bois',
-	'Drefféac', 'Pontchâteau', 'Savenay', 'Cordemais', 'Saint-Etienne-de-Montluc',
-	'Couëron', 'Basse Indre – Saint-Herblain', 'Chantenay', 'Nantes', 'Masserac',
-	'Beslé', 'Fougeray-Langon', 'Messac-Guipry', 'Pléchâtel', 'Saint-Senoux-Pléchâtel',
-	'Guichen-Bourg-des-Comptes', 'Laillé', 'Bruz', 'Ker Lann', 'Saint-Jacques-de-la-Lande',
-	'Rennes', 'Laval', 'Le Mans', 'Massy TGV', 'Paris Montparnasse'
-];
-
-const signIn = () => {
+  </template>
+  
+  <script setup>
+  import { ref, computed, onMounted } from 'vue';
+  import * as XLSX from 'xlsx';
+  import { collection, getDocs } from 'firebase/firestore';
+  import { db } from '../firebaseConfig';
+  
+  const props = defineProps({
+	questions: {
+	  type: Array,
+	  required: true
+	}
+  });
+  
+  const showSignInModal = ref(false);
+  const showAdminDashboard = ref(false);
+  const password = ref('');
+  const totalSurveys = ref(0);
+  const surveysByEnqueteur = ref({});
+  const surveysByType = ref({});
+  
+  const surveyCollectionRef = collection(db, "HDF");
+  
+  const signIn = () => {
+	// Implement your sign-in logic here
 	if (password.value === 'admin123') {
-		showSignInModal.value = false;
-		fetchAdminData();
-		showAdminDashboard.value = true;
+	  showSignInModal.value = false;
+	  showAdminDashboard.value = true;
+	  fetchDashboardData();
 	} else {
-		alert('Mot de passe incorrect');
+	  alert('Mot de passe incorrect');
 	}
-};
+  };
+  
+  const fetchDashboardData = async () => {
+	const querySnapshot = await getDocs(surveyCollectionRef);
+	totalSurveys.value = querySnapshot.size;
+  
+	const enqueteurCounts = {};
+	const typeCounts = {};
+  
+	querySnapshot.forEach((doc) => {
+	  const data = doc.data();
+	  
+	  // Count by enqueteur
+	  const enqueteur = data.ENQUETEUR || 'Unknown';
+	  enqueteurCounts[enqueteur] = (enqueteurCounts[enqueteur] || 0) + 1;
+  
+	  // Count by type (assuming Q1 represents the type)
+	  const type = data.Q1 || 'Unknown';
+	  typeCounts[type] = (typeCounts[type] || 0) + 1;
+	});
+  
+	surveysByEnqueteur.value = enqueteurCounts;
+	surveysByType.value = typeCounts;
+  };
+  const downloadData = async () => {
+  try {
+    const querySnapshot = await getDocs(surveyCollectionRef);
 
-const fetchAdminData = async () => {
-	try {
-		const querySnapshot = await getDocs(surveyCollectionRef);
-		const surveys = querySnapshot.docs.map(doc => doc.data());
+    const headerOrder = [
+      "ID_questionnaire",
+      "ENQUETEUR",
+      "DATE",
+      "JOUR",
+      "HEURE_DEBUT",
+      "HEURE_FIN",
+    ];
 
-		totalSurveys.value = surveys.length;
+    let portIdOriginInserted = false;
+    let portIdDestinationInserted = false;
 
-		surveysByEnqueteur.value = surveys.reduce((acc, survey) => {
-			acc[survey.ENQUETEUR] = (acc[survey.ENQUETEUR] || 0) + 1;
-			return acc;
-		}, {});
-	} catch (error) {
-		console.error("Erreur lors de la récupération des données :", error);
-	}
-};
+    props.questions.forEach(question => {
+      if (question.usesCommuneSelector) {
+        headerOrder.push(`${question.id}_COMMUNE`, `${question.id}_CODE_INSEE`, `${question.id}_COMMUNE_LIBRE`);
+      } else {
+        headerOrder.push(question.id);
+      }
 
-const downloadData = async () => {
-	try {
-		const querySnapshot = await getDocs(surveyCollectionRef);
+      // Insert PORT_ID_ORIGIN right after Q9bisPL
+      if (question.id === 'Q9bisPL' && !portIdOriginInserted) {
+        headerOrder.push('PORT_ID_ORIGIN');
+        portIdOriginInserted = true;
+      }
 
-		const headerOrder = [
-			'ID_questionnaire',
-			'ENQUETEUR',
-			'DATE',
-			'JOUR',
-			'HEURE_DEBUT',
-			'HEURE_FIN',
-			'Q1',
-			'Q6',
-			'Q7',
-			'Q8',
-			'Q9_COMMUNE',
-			'Q9_CODE_INSEE',
-			'Q9_COMMUNE_LIBRE',
-			'Q10'
-		];
+      // Insert PORT_ID_DESTINATION right after Q11bisPL
+      if (question.id === 'Q11bisPL' && !portIdDestinationInserted) {
+        headerOrder.push('PORT_ID_DESTINATION');
+        portIdDestinationInserted = true;
+      }
+    });
 
-		const data = querySnapshot.docs.map(doc => {
-			const docData = doc.data();
-			return headerOrder.reduce((acc, key) => {
-				switch (key) {
-					case 'Q9_COMMUNE_LIBRE':
-						acc[key] = docData['Q9_COMMUNE_LIBRE'] || '';
-						break;
-					case 'Q9_COMMUNE':
-						// Only fill this if COMMUNE_LIBRE is empty
-						acc[key] = docData['Q9_COMMUNE_LIBRE'] ? '' : (docData['Q9_COMMUNE'] || '');
-						break;
-					case 'Q9_CODE_INSEE':
-						// Only fill if a commune was selected from the list
-						acc[key] = docData['Q9_COMMUNE_LIBRE'] ? '' : (docData['Q9_CODE_INSEE'] || '');
-						break;
-					default:
-						acc[key] = docData[key] || '';
-				}
-				return acc;
-			}, {});
-		});
+    const data = querySnapshot.docs.map((doc) => {
+      const docData = doc.data();
+      return headerOrder.reduce((acc, key) => {
+        if (key === 'PORT_ID_ORIGIN') {
+          // Only include PORT_ID_ORIGIN if Q9bisPL is 1 (oui)
+          acc[key] = docData['Q9bisPL'] === 1 ? (docData[key] || '') : '';
+        } else if (key === 'PORT_ID_DESTINATION') {
+          // Only include PORT_ID_DESTINATION if Q11bisPL is 1 (oui)
+          acc[key] = docData['Q11bisPL'] === 1 ? (docData[key] || '') : '';
+        } else if (key.includes('_COMMUNE') || key.includes('_CODE_INSEE') || key.includes('_COMMUNE_LIBRE')) {
+          acc[key] = docData[key] || '';
+        } else {
+          acc[key] = docData[key] || '';
+        }
+        return acc;
+      }, {});
+    });
 
-		const worksheet = XLSX.utils.json_to_sheet(data, { header: headerOrder });
+    const worksheet = XLSX.utils.json_to_sheet(data, { header: headerOrder });
 
-		// Set column widths
-		const colWidths = headerOrder.map(() => ({ wch: 20 }));
-		worksheet['!cols'] = colWidths;
+    // Set column widths
+    const colWidths = headerOrder.map(() => ({ wch: 20 }));
+    worksheet['!cols'] = colWidths;
 
-		const workbook = XLSX.utils.book_new();
-		XLSX.utils.book_append_sheet(workbook, worksheet, "Survey Data");
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Survey Data");
 
-		// Use a timestamp in the filename to avoid overwriting
-		const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-		XLSX.writeFile(workbook, `HDF_Survey_Data_${timestamp}.xlsx`);
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    XLSX.writeFile(workbook, `HDF_Survey_Data_${timestamp}.xlsx`);
 
-		console.log("File downloaded successfully");
-	} catch (error) {
-		console.error("Error downloading data:", error);
-	}
+    console.log("File downloaded successfully");
+  } catch (error) {
+    console.error("Error downloading data:", error);
+  }
 };
 
 onMounted(() => {
-	// Initialization logic if needed
+  // You can add any initialization logic here if needed
 });
 </script>
 
 <style scoped>
 .btn-signin {
-	background-color: #4CAF50;
-	color: #ffffff;
-	border: none;
-	cursor: pointer;
-	font-size: 16px;
-	font-weight: bold;
-	padding: 12px 24px;
-	border-radius: 30px;
-	transition: all 0.3s ease;
-	text-transform: uppercase;
-	letter-spacing: 1px;
-	box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-	margin-bottom: 20px;
+  background-color: #4caf50;
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  padding: 12px 24px;
+  border-radius: 30px;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
 }
 
 .btn-signin:hover {
-	background-color: #45a049;
-	box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+  background-color: #45a049;
+  box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
 }
 
 /* Keep the rest of the styles unchanged */
 .btn-download {
-	background-color: #3498db;
-	color: white;
-	border: none;
-	padding: 10px 20px;
-	border-radius: 5px;
-	cursor: pointer;
-	font-size: 16px;
-	transition: background-color 0.3s;
-	width: 100%;
-	margin-top: 20px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  transition: background-color 0.3s;
+  width: 100%;
+  margin-top: 20px;
 }
 
 .btn-download:hover {
-	background-color: #2980b9;
+  background-color: #2980b9;
 }
 
 .modal {
-	position: fixed;
-	z-index: 1000;
-	left: 0;
-	top: 0;
-	width: 100%;
-	height: 100%;
-	background-color: rgba(0, 0, 0, 0.5);
-	display: flex;
-	justify-content: center;
-	align-items: center;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .modal-content {
-	background-color: #2c3e50;
-	color: #ecf0f1;
-	padding: 20px;
-	border-radius: 10px;
-	max-width: 500px;
-	width: 90%;
-	max-height: 90vh;
-	overflow-y: auto;
-	position: relative;
+  background-color: #2c3e50;
+  color: #ecf0f1;
+  padding: 20px;
+  border-radius: 10px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
 }
 
 .close {
-	position: fixed;
-	/* Change from absolute to fixed */
-	right: 20px;
-	top: 20px;
-	font-size: 28px;
-	font-weight: bold;
-	color: #bdc3c7;
-	background: none;
-	border: none;
-	cursor: pointer;
-	z-index: 1010;
-	/* Ensure it's above other content */
+  position: fixed;
+  /* Change from absolute to fixed */
+  right: 20px;
+  top: 20px;
+  font-size: 28px;
+  font-weight: bold;
+  color: #bdc3c7;
+  background: none;
+  border: none;
+  cursor: pointer;
+  z-index: 1010;
+  /* Ensure it's above other content */
 }
 
 .close:hover {
-	color: #ecf0f1;
+  color: #ecf0f1;
 }
 
 .dashboard-content {
-	display: grid;
-	gap: 20px;
-	margin-bottom: 20px;
+  display: grid;
+  gap: 20px;
+  margin-bottom: 20px;
 }
 
 .dashboard-card {
-	background-color: #34495e;
-	border-radius: 8px;
-	padding: 15px;
+  background-color: #34495e;
+  border-radius: 8px;
+  padding: 15px;
 }
 
 .dashboard-card h3 {
-	margin-top: 0;
-	color: #3498db;
+  margin-top: 0;
+  color: #3498db;
 }
 
 .dashboard-card ul {
-	list-style-type: none;
-	padding: 0;
-	margin: 0;
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
 }
 
 .dashboard-card li {
-	display: flex;
-	justify-content: space-between;
-	margin-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 5px;
 }
 
 .big-number {
-	font-size: 3em;
-	font-weight: bold;
-	color: #2ecc71;
-	margin: 10px 0;
+  font-size: 3em;
+  font-weight: bold;
+  color: #2ecc71;
+  margin: 10px 0;
 }
 
 .count {
-	font-weight: bold;
-	color: #2ecc71;
+  font-weight: bold;
+  color: #2ecc71;
 }
 
 .form-control {
-	width: 100%;
-	padding: 10px;
-	margin-bottom: 10px;
-	border: 1px solid #34495e;
-	border-radius: 5px;
-	background-color: #34495e;
-	color: #ecf0f1;
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #34495e;
+  border-radius: 5px;
+  background-color: #34495e;
+  color: #ecf0f1;
 }
 
 @media (max-width: 600px) {
-	.modal-content {
-		width: 100%;
-		height: 100%;
-		border-radius: 0;
-		max-height: 100vh;
-	}
+  .modal-content {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    max-height: 100vh;
+  }
 
-	.close {
-		top: 10px;
-		right: 10px;
-	}
+  .close {
+    top: 10px;
+    right: 10px;
+  }
 }
 </style>
