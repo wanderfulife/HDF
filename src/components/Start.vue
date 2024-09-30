@@ -118,7 +118,6 @@
     <!-- Footer -->
     <div class="footer">
       <AdminDashboard :questions="questions" />
-      <div class="doc-count">Nombre de questionnaires : {{ docCount }}</div>
     </div>
 
     <!-- PDF Modal -->
@@ -533,11 +532,6 @@ const getNextId = async () => {
 
   return `HDF-${counter.toString().padStart(6, "0")}`;
 };
-
-// Lifecycle hooks
-onMounted(() => {
-  getDocCount();
-});
 </script>
 
 
