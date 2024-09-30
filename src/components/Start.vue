@@ -1,5 +1,4 @@
 <template>
-
   <div class="app-container">
     <!-- Progress Bar -->
     <div v-if="currentStep === 'survey'" class="progress-bar">
@@ -47,10 +46,14 @@
             "
           >
             <div
-              v-for="(option, index) in currentQuestion.options"
+              v-for="(option, index) in currentQuestionOptions"
               :key="index"
             >
-              <button @click="selectAnswer(option)" class="btn-option">
+              <button 
+                v-if="!option.hidden"
+                @click="selectAnswer(option)" 
+                class="btn-option"
+              >
                 {{ option.text }}
               </button>
             </div>
@@ -252,6 +255,16 @@ const currentQuestion = computed(() => {
   return null;
 });
 
+const currentQuestionOptions = computed(() => {
+  if (
+    currentQuestion.value &&
+    typeof currentQuestion.value.options === "function"
+  ) {
+    return currentQuestion.value.options(answers.value);
+  }
+  return currentQuestion.value?.options || [];
+});
+
 const showFilteredStations = computed(
   () => stationInput.value.length > 0 && filteredStations.value.length > 0
 );
@@ -314,18 +327,21 @@ const startSurvey = () => {
   isSurveyComplete.value = false;
 };
 
+// Add this near the top of the <script setup> section
+const logAnswers = () => {
+  console.log("Current answers:", JSON.parse(JSON.stringify(answers.value)));
+};
+
 const selectAnswer = (option) => {
   if (currentQuestion.value) {
-    if (option.requiresPrecision) {
-      isPrecisionRequired.value = true;
-      currentOptionRequiringPrecision.value = option;
+    answers.value[currentQuestion.value.id] = option.id;
+    console.log(`Answer saved for ${currentQuestion.value.id}:`, option.id);
+    logAnswers(); // Log all answers after each selection
+
+    if (option.next === "end") {
+      finishSurvey();
     } else {
-      answers.value[currentQuestion.value.id] = option.id;
-      if (option.next === "end") {
-        finishSurvey();
-      } else {
-        nextQuestion(option.next);
-      }
+      nextQuestion(option.next);
     }
   }
 };
@@ -411,33 +427,32 @@ const handleCommuneSelection = () => {
 };
 
 const nextQuestion = (forcedNextId = null) => {
-    let nextQuestionId = forcedNextId;
-    if (!nextQuestionId && currentQuestion.value) {
-        if (typeof currentQuestion.value.next === 'function') {
-            nextQuestionId = currentQuestion.value.next(answers.value);
-        } else {
-            nextQuestionId = currentQuestion.value.next;
-        }
+  let nextQuestionId = forcedNextId;
+  if (!nextQuestionId && currentQuestion.value) {
+    if (typeof currentQuestion.value.next === "function") {
+      nextQuestionId = currentQuestion.value.next(answers.value);
+    } else {
+      nextQuestionId = currentQuestion.value.next;
     }
+  }
 
-    if (nextQuestionId === "end") {
-        finishSurvey();
-    } else if (nextQuestionId) {
-        const nextIndex = questions.findIndex((q) => q.id === nextQuestionId);
-        if (nextIndex !== -1) {
-            currentQuestionIndex.value = nextIndex;
-            questionPath.value.push(nextQuestionId);
-            freeTextAnswer.value = "";
+  if (nextQuestionId === "end") {
+    finishSurvey();
+  } else if (nextQuestionId) {
+    const nextIndex = questions.findIndex((q) => q.id === nextQuestionId);
+    if (nextIndex !== -1) {
+      currentQuestionIndex.value = nextIndex;
+      questionPath.value.push(nextQuestionId);
+      freeTextAnswer.value = "";
 
-            // Execute onEnter function if it exists
-            const nextQuestion = questions[nextIndex];
-            if (typeof nextQuestion.onEnter === 'function') {
-                nextQuestion.onEnter(answers.value);
-            }
-        }
+      // Execute onEnter function if it exists
+      const nextQuestion = questions[nextIndex];
+      if (typeof nextQuestion.onEnter === "function") {
+        nextQuestion.onEnter(answers.value);
+      }
     }
+  }
 };
-
 
 const previousQuestion = () => {
   if (canGoBack.value) {
@@ -457,6 +472,8 @@ const previousQuestion = () => {
 const finishSurvey = async () => {
   isSurveyComplete.value = true;
   const now = new Date();
+  logAnswers(); // Log all answers before saving to Firebase
+
   const uniqueId = await getNextId();
 
   let surveyData = {
@@ -470,24 +487,16 @@ const finishSurvey = async () => {
       minute: "2-digit",
       second: "2-digit",
     }),
-    PORT_ID_ORIGIN: answers.value.PORT_ID_ORIGIN || '',
-    PORT_ID_DESTINATION: answers.value.PORT_ID_DESTINATION || '',
+    PORT_ID_ORIGIN: answers.value.PORT_ID_ORIGIN || "",
+    PORT_ID_DESTINATION: answers.value.PORT_ID_DESTINATION || "",
   };
 
-  // Process answers for all questions
-  questions.forEach((question) => {
-    const questionId = question.id;
-    if (question.usesCommuneSelector) {
-      surveyData[`${questionId}_COMMUNE`] =
-        answers.value[`${questionId}_COMMUNE`] || "";
-      surveyData[`${questionId}_CODE_INSEE`] =
-        answers.value[`${questionId}_CODE_INSEE`] || "";
-      surveyData[`${questionId}_COMMUNE_LIBRE`] =
-        answers.value[`${questionId}_COMMUNE_LIBRE`] || "";
-    } else {
-      surveyData[questionId] = answers.value[questionId] || "";
-    }
+  // Include all answers in the survey data
+  Object.keys(answers.value).forEach(key => {
+    surveyData[key] = answers.value[key];
   });
+
+  console.log("Survey data to be saved:", surveyData);
 
   try {
     await addDoc(surveyCollectionRef, surveyData);

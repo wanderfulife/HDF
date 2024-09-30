@@ -95,28 +95,37 @@ export const questions = [
 	{
 		id: "Q12",
 		text: "Motif Destination",
-		options: [
-			{ id: 1, text: "Domicile", next: "Q13" },
-			{ id: 2, text: "Travail", next: "Q13" },
-			{ id: 3, text: "Affaires professionnelles", next: "Q13" },
-			{ id: 4, text: "Études", next: "Q13" },
-			{ id: 5, text: "Achats", next: "Q13" },
-			{ id: 6, text: "Soins, démarches admin", next: "Q13" },
-			{ id: 7, text: "Loisirs", next: "Q13" },
-			{ id: 8, text: "Visites", next: "Q13" },
-			{ id: 9, text: "Vacances, week-end, tourisme", next: "Q13" },
-			{ id: 10, text: "Rabattement sur transport en commun", next: "Q13" },
-			{ id: 11, text: "Accompagnement + domicile", next: "Q13" },
-			{ id: 12, text: "Accompagnement + travail", next: "Q13" },
-			{ id: 13, text: "Accompagnement + affaires professionnelles", next: "Q13" },
-			{ id: 14, text: "Accompagnement + études", next: "Q13" },
-			{ id: 15, text: "Accompagnement + achats", next: "Q13" },
-			{ id: 16, text: "Accompagnement + soins, démarches admin", next: "Q13" },
-			{ id: 17, text: "Accompagnement + loisirs", next: "Q13" },
-			{ id: 18, text: "Accompagnement + visites", next: "Q13" },
-			{ id: 19, text: "Accompagnement + vacances, week-end, tourisme", next: "Q13" },
-			{ id: 99, text: "Autre", next: "Q13" },
-		],
+		options: (answers) => {
+			const baseOptions = [
+				{ id: 0, text: "Domicile", next: "Q13" },
+				{ id: 1, text: "Travail", next: "Q13" },
+				{ id: 2, text: "Affaires professionnelles", next: "Q13" },
+				{ id: 3, text: "Études", next: "Q13" },
+				{ id: 4, text: "Achats", next: "Q13" },
+				{ id: 5, text: "Soins, démarches admin", next: "Q13" },
+				{ id: 6, text: "Loisirs", next: "Q13" },
+				{ id: 7, text: "Visites", next: "Q13" },
+				{ id: 8, text: "Vacances, week-end, tourisme", next: "Q13" },
+				{ id: 9, text: "Rabattement sur transport en commun", next: "Q13" },
+				{ id: 10, text: "Accompagnement + domicile", next: "Q13" },
+				{ id: 11, text: "Accompagnement + travail", next: "Q13" },
+				{ id: 12, text: "Accompagnement + affaires professionnelles", next: "Q13" },
+				{ id: 13, text: "Accompagnement + études", next: "Q13" },
+				{ id: 14, text: "Accompagnement + achats", next: "Q13" },
+				{ id: 15, text: "Accompagnement + soins, démarches admin", next: "Q13" },
+				{ id: 16, text: "Accompagnement + loisirs", next: "Q13" },
+				{ id: 17, text: "Accompagnement + visites", next: "Q13" },
+				{ id: 18, text: "Accompagnement + vacances, week-end, tourisme", next: "Q13" },
+				{ id: 19, text: "Accompagnement + rabattement sur transport en commun", next: "Q13" },
+				{ id: 99, text: "Autre", next: "Q13" },
+			];
+
+			// Instead of filtering out options, mark them as hidden
+			return baseOptions.map(option => ({
+				...option,
+				hidden: (answers.Q10 === 0 && option.id === 0) || (answers.Q10 === 1 && option.id === 1)
+			}));
+		},
 	},
 	{
 		id: "Q13",
@@ -165,31 +174,31 @@ export const questions = [
 		freeText: true,
 		next: "Q9PL",
 	},
-    {
-        id: "Q9PL",
-        text: "D'ou venez vous ?",
-        usesCommuneSelector: true,
-        next: (answers) => {
-            const selectedCommune = answers["Q9PL_COMMUNE"] || answers["Q9PL_COMMUNE_LIBRE"];
-            const isPortCity = PORTS.some(port => port.CITY.toLowerCase() === selectedCommune.toLowerCase());
-            return isPortCity ? "Q9bisPL" : "Q10PL";
-        }
-    },
-    {
-        id: "Q9bisPL",
-        text: "Venez vous du port",
-        onEnter: (answers) => {
-            const selectedCommune = answers["Q9PL_COMMUNE"] || answers["Q9PL_COMMUNE_LIBRE"];
-            const port = PORTS.find(port => port.CITY.toLowerCase() === selectedCommune.toLowerCase());
-            if (port) {
-                answers["PORT_ID_ORIGIN"] = port.PORT_ID;
-            }
-        },
-        options: [
-            { id: 1, text: "oui", next: "Q10PL" },
-            { id: 2, text: "non", next: "Q10PL" },
-        ],
-    },
+	{
+		id: "Q9PL",
+		text: "D'ou venez vous ?",
+		usesCommuneSelector: true,
+		next: (answers) => {
+			const selectedCommune = answers["Q9PL_COMMUNE"] || answers["Q9PL_COMMUNE_LIBRE"];
+			const isPortCity = PORTS.some(port => port.CITY.toLowerCase() === selectedCommune.toLowerCase());
+			return isPortCity ? "Q9bisPL" : "Q10PL";
+		}
+	},
+	{
+		id: "Q9bisPL",
+		text: "Venez vous du port",
+		onEnter: (answers) => {
+			const selectedCommune = answers["Q9PL_COMMUNE"] || answers["Q9PL_COMMUNE_LIBRE"];
+			const port = PORTS.find(port => port.CITY.toLowerCase() === selectedCommune.toLowerCase());
+			if (port) {
+				answers["PORT_ID_ORIGIN"] = port.PORT_ID;
+			}
+		},
+		options: [
+			{ id: 1, text: "oui", next: "Q10PL" },
+			{ id: 2, text: "non", next: "Q10PL" },
+		],
+	},
 	{
 		id: "Q10PL",
 		text: "Motif origine",
@@ -204,30 +213,30 @@ export const questions = [
 		],
 	},
 	{
-        id: "Q11PL",
-        text: "Ou allez vous ?",
-        usesCommuneSelector: true,
-        next: (answers) => {
-            const selectedCommune = answers["Q11PL_COMMUNE"] || answers["Q11PL_COMMUNE_LIBRE"];
-            const isPortCity = PORTS.some(port => port.CITY.toLowerCase() === selectedCommune.toLowerCase());
-            return isPortCity ? "Q11bisPL" : "Q12PL";
-        }
-    },
-    {
-        id: "Q11bisPL",
-        text: "Allez vous au port",
-        onEnter: (answers) => {
-            const selectedCommune = answers["Q11PL_COMMUNE"] || answers["Q11PL_COMMUNE_LIBRE"];
-            const port = PORTS.find(port => port.CITY.toLowerCase() === selectedCommune.toLowerCase());
-            if (port) {
-                answers["PORT_ID_DESTINATION"] = port.PORT_ID;
-            }
-        },
-        options: [
-            { id: 1, text: "oui", next: "Q12PL" },
-            { id: 2, text: "non", next: "Q12PL" },
-        ],
-    },
+		id: "Q11PL",
+		text: "Ou allez vous ?",
+		usesCommuneSelector: true,
+		next: (answers) => {
+			const selectedCommune = answers["Q11PL_COMMUNE"] || answers["Q11PL_COMMUNE_LIBRE"];
+			const isPortCity = PORTS.some(port => port.CITY.toLowerCase() === selectedCommune.toLowerCase());
+			return isPortCity ? "Q11bisPL" : "Q12PL";
+		}
+	},
+	{
+		id: "Q11bisPL",
+		text: "Allez vous au port",
+		onEnter: (answers) => {
+			const selectedCommune = answers["Q11PL_COMMUNE"] || answers["Q11PL_COMMUNE_LIBRE"];
+			const port = PORTS.find(port => port.CITY.toLowerCase() === selectedCommune.toLowerCase());
+			if (port) {
+				answers["PORT_ID_DESTINATION"] = port.PORT_ID;
+			}
+		},
+		options: [
+			{ id: 1, text: "oui", next: "Q12PL" },
+			{ id: 2, text: "non", next: "Q12PL" },
+		],
+	},
 	{
 		id: "Q12PL",
 		text: "Motif destination",
@@ -245,8 +254,14 @@ export const questions = [
 		id: "Q13PL",
 		text: "à vide ou poids de la marchandise en tonnes",
 		freeText: true,
+		type: "number",  // Specify that this is a number input
 		freeTextPlaceholder: "Vide = 0 ou alors indiquez le poids en tonne (1 tonne = 1000 Kgs)",
 		next: "Q14PL",
+		validate: (value) => {
+			const numValue = parseFloat(value);
+			return !isNaN(numValue) && numValue >= 0;
+		},
+		errorMessage: "Veuillez entrer un nombre valide (0 ou plus)."
 	},
 	{
 		id: "Q14PL",
@@ -256,7 +271,3 @@ export const questions = [
 		next: "end",
 	},
 ];
-
-
-
-

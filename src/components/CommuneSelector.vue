@@ -1,8 +1,8 @@
 <!-- CommuneSelector.vue -->
 <template>
   <div class="form-group">
-    <input class="form-control" type="text" v-model="postalCodeInput" @input="search"
-      placeholder="Code postal (ex: 92, 54)" />
+    <input class="form-control" type="number" v-model="postalCodeInput" @input="search"
+      placeholder="Code postal (ex: 92, 54)" min="0" step="1" />
     <input class="form-control" type="text" v-model="communeInput" @input="search" placeholder="Nom de la commune" />
     <div v-if="showDropdown" class="commune-dropdown">
       <div v-for="item in filteredCommunes" :key="item['CODE INSEE']" @click="selectCommune(item)"

@@ -1,110 +1,110 @@
 <template>
-	<div>
-	  <button class="btn-signin" @click="showSignInModal = true">
-		Connexion Admin
-	  </button>
-  
-	  <!-- Sign In Modal -->
-	  <div v-if="showSignInModal" class="modal">
-		<div class="modal-content signin-modal">
-		  <button class="close" @click="showSignInModal = false">&times;</button>
-		  <h2>Connexion Admin</h2>
-		  <input
-			v-model="password"
-			type="password"
-			placeholder="Entrez le mot de passe"
-			class="form-control"
-		  />
-		  <button @click="signIn" class="btn-signin">Se connecter</button>
-		</div>
-	  </div>
-  
-	  <!-- Admin Dashboard Modal -->
-	  <div v-if="showAdminDashboard" class="modal">
-		<div class="modal-content admin-dashboard">
-		  <button class="close" @click="showAdminDashboard = false">
-			&times;
-		  </button>
-		  <h2>Tableau de Bord Admin</h2>
-		  <div class="dashboard-content">
-			<div class="dashboard-card total">
-			  <h3>Total des Enquêtes</h3>
-			  <p class="big-number">{{ totalSurveys }}</p>
-			</div>
-			<div class="dashboard-card">
-			  <h3>Enquêtes par Enquêteur</h3>
-			  <ul>
-				<li v-for="(count, name) in surveysByEnqueteur" :key="name">
-				  <span>{{ name }}</span>
-				  <span class="count">{{ count }}</span>
-				</li>
-			  </ul>
-			</div>
-		  </div>
-		  <button @click="downloadData" class="btn-download">
-			Télécharger les Données
-		  </button>
-		</div>
-	  </div>
-	</div>
-  </template>
+  <div>
+    <button class="btn-signin" @click="showSignInModal = true">
+      Connexion Admin
+    </button>
+
+    <!-- Sign In Modal -->
+    <div v-if="showSignInModal" class="modal">
+      <div class="modal-content signin-modal">
+        <button class="close" @click="showSignInModal = false">&times;</button>
+        <h2>Connexion Admin</h2>
+        <input
+          v-model="password"
+          type="password"
+          placeholder="Entrez le mot de passe"
+          class="form-control"
+        />
+        <button @click="signIn" class="btn-signin">Se connecter</button>
+      </div>
+    </div>
+
+    <!-- Admin Dashboard Modal -->
+    <div v-if="showAdminDashboard" class="modal">
+      <div class="modal-content admin-dashboard">
+        <button class="close" @click="showAdminDashboard = false">
+          &times;
+        </button>
+        <h2>Tableau de Bord Admin</h2>
+        <div class="dashboard-content">
+          <div class="dashboard-card total">
+            <h3>Total des Enquêtes</h3>
+            <p class="big-number">{{ totalSurveys }}</p>
+          </div>
+          <div class="dashboard-card">
+            <h3>Enquêtes par Enquêteur</h3>
+            <ul>
+              <li v-for="(count, name) in surveysByEnqueteur" :key="name">
+                <span>{{ name }}</span>
+                <span class="count">{{ count }}</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <button @click="downloadData" class="btn-download">
+          Télécharger les Données
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
   
   <script setup>
-  import { ref, computed, onMounted } from 'vue';
-  import * as XLSX from 'xlsx';
-  import { collection, getDocs } from 'firebase/firestore';
-  import { db } from '../firebaseConfig';
-  
-  const props = defineProps({
-	questions: {
-	  type: Array,
-	  required: true
-	}
+import { ref, computed, onMounted } from "vue";
+import * as XLSX from "xlsx";
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "../firebaseConfig";
+
+const props = defineProps({
+  questions: {
+    type: Array,
+    required: true,
+  },
+});
+
+const showSignInModal = ref(false);
+const showAdminDashboard = ref(false);
+const password = ref("");
+const totalSurveys = ref(0);
+const surveysByEnqueteur = ref({});
+const surveysByType = ref({});
+
+const surveyCollectionRef = collection(db, "HDF");
+
+const signIn = () => {
+  // Implement your sign-in logic here
+  if (password.value === "admin123") {
+    showSignInModal.value = false;
+    showAdminDashboard.value = true;
+    fetchDashboardData();
+  } else {
+    alert("Mot de passe incorrect");
+  }
+};
+
+const fetchDashboardData = async () => {
+  const querySnapshot = await getDocs(surveyCollectionRef);
+  totalSurveys.value = querySnapshot.size;
+
+  const enqueteurCounts = {};
+  const typeCounts = {};
+
+  querySnapshot.forEach((doc) => {
+    const data = doc.data();
+
+    // Count by enqueteur
+    const enqueteur = data.ENQUETEUR || "Unknown";
+    enqueteurCounts[enqueteur] = (enqueteurCounts[enqueteur] || 0) + 1;
+
+    // Count by type (assuming Q1 represents the type)
+    const type = data.Q1 || "Unknown";
+    typeCounts[type] = (typeCounts[type] || 0) + 1;
   });
-  
-  const showSignInModal = ref(false);
-  const showAdminDashboard = ref(false);
-  const password = ref('');
-  const totalSurveys = ref(0);
-  const surveysByEnqueteur = ref({});
-  const surveysByType = ref({});
-  
-  const surveyCollectionRef = collection(db, "HDF");
-  
-  const signIn = () => {
-	// Implement your sign-in logic here
-	if (password.value === 'admin123') {
-	  showSignInModal.value = false;
-	  showAdminDashboard.value = true;
-	  fetchDashboardData();
-	} else {
-	  alert('Mot de passe incorrect');
-	}
-  };
-  
-  const fetchDashboardData = async () => {
-	const querySnapshot = await getDocs(surveyCollectionRef);
-	totalSurveys.value = querySnapshot.size;
-  
-	const enqueteurCounts = {};
-	const typeCounts = {};
-  
-	querySnapshot.forEach((doc) => {
-	  const data = doc.data();
-	  
-	  // Count by enqueteur
-	  const enqueteur = data.ENQUETEUR || 'Unknown';
-	  enqueteurCounts[enqueteur] = (enqueteurCounts[enqueteur] || 0) + 1;
-  
-	  // Count by type (assuming Q1 represents the type)
-	  const type = data.Q1 || 'Unknown';
-	  typeCounts[type] = (typeCounts[type] || 0) + 1;
-	});
-  
-	surveysByEnqueteur.value = enqueteurCounts;
-	surveysByType.value = typeCounts;
-  };
-  const downloadData = async () => {
+
+  surveysByEnqueteur.value = enqueteurCounts;
+  surveysByType.value = typeCounts;
+};
+const downloadData = async () => {
   try {
     const querySnapshot = await getDocs(surveyCollectionRef);
 
@@ -144,15 +144,14 @@
       const docData = doc.data();
       return headerOrder.reduce((acc, key) => {
         if (key === 'PORT_ID_ORIGIN') {
-          // Only include PORT_ID_ORIGIN if Q9bisPL is 1 (oui)
           acc[key] = docData['Q9bisPL'] === 1 ? (docData[key] || '') : '';
         } else if (key === 'PORT_ID_DESTINATION') {
-          // Only include PORT_ID_DESTINATION if Q11bisPL is 1 (oui)
           acc[key] = docData['Q11bisPL'] === 1 ? (docData[key] || '') : '';
         } else if (key.includes('_COMMUNE') || key.includes('_CODE_INSEE') || key.includes('_COMMUNE_LIBRE')) {
           acc[key] = docData[key] || '';
         } else {
-          acc[key] = docData[key] || '';
+          // Include all responses, even if they are 0
+          acc[key] = docData[key] !== undefined ? docData[key] : '';
         }
         return acc;
       }, {});
