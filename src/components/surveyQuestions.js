@@ -236,7 +236,7 @@ export const questions = [
 			{ id: 1, text: "Chargement", next: "Q13PL" },
 			{ id: 2, text: "Dechargement", next: "Q13PL" },
 			{ id: 3, text: "Mixte chargement et déchargement", next: "Q13PL" },
-			{ id: 4, text: "Prise / Retour vehicule", next: "Q13PL	" },
+			{ id: 4, text: "Prise / Retour vehicule", next: "Q13PL" },
 			{ id: 5, text: "Dedouanement", next: "Q13PL" },
 			{ id: 99, text: "Autre", next: "Q13PL" },
 		],
