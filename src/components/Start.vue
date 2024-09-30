@@ -152,6 +152,7 @@ import CommuneSelector from "./CommuneSelector.vue";
 import AdminDashboard from "./AdminDashboard.vue";
 
 // Refs
+const initialPoste = ref(null);
 const docCount = ref(0);
 const currentStep = ref("enqueteur");
 const startDate = ref("");
@@ -338,6 +339,10 @@ const selectAnswer = (option) => {
     console.log(`Answer saved for ${currentQuestion.value.id}:`, option.id);
     logAnswers(); // Log all answers after each selection
 
+    if (currentQuestion.value.id === "Q1") {
+      initialPoste.value = option.id;
+    }
+
     if (option.next === "end") {
       finishSurvey();
     } else {
@@ -509,11 +514,26 @@ const finishSurvey = async () => {
 };
 // Update resetSurvey function
 const resetSurvey = () => {
-  currentStep.value = "start";
-  startDate.value = "";
-  answers.value = {};
-  currentQuestionIndex.value = 0;
-  questionPath.value = ["Q1"];
+  if (initialPoste.value === null) {
+    // First time: reset to the start and clear everything
+    currentStep.value = "start";
+    startDate.value = "";
+    answers.value = {};
+    currentQuestionIndex.value = 0;
+    questionPath.value = ["Q1"];
+  } else {
+    // Subsequent times: reset to Q6 and keep the initial Poste
+    currentStep.value = "survey";
+    startDate.value = new Date().toLocaleTimeString("fr-FR", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+    });
+    answers.value = { Q1: initialPoste.value };
+    currentQuestionIndex.value = questions.findIndex(q => q.id === "Q6");
+    questionPath.value = ["Q1", "Q6"];
+  }
+  
   freeTextAnswer.value = "";
   communeSelections.value = {};
   postalCodePrefixes.value = {};

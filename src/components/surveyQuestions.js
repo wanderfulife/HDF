@@ -1,4 +1,8 @@
 import PORTS from './Ports.js';
+import { ref } from 'vue';
+
+// Add this new ref to store the initially selected Poste
+const initialPoste = ref(null);
 export const questions = [
 	{
 		id: "Q1",
